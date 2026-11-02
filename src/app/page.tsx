@@ -192,17 +192,39 @@ export default function HomePage() {
           <ProcessingView state={state} />
         </div>
       ) : state === "error" ? (
-        <div className="mx-auto max-w-xl rounded-xl border border-red-200 bg-red-50 p-6">
-          <h2 className="text-sm font-semibold text-red-800">Processing failed</h2>
-          <p role="alert" className="mt-1 text-sm text-red-700">
+        <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50/80 p-6 shadow-sm backdrop-blur">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-red-600 text-xs font-bold">!</span>
+            <h2 className="text-sm font-semibold text-red-900">Processing failed</h2>
+          </div>
+          <p role="alert" className="mt-2 text-sm leading-relaxed text-red-800">
             {error}
           </p>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {error && (error.toLowerCase().includes("limit") || error.toLowerCase().includes("key") || error.toLowerCase().includes("gemini")) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-red-700 transition"
+                >
+                  Add Your Gemini Key
+                </button>
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 shadow-sm hover:bg-red-50 hover:text-red-800 transition"
+                >
+                  Get Free Gemini Key ↗
+                </a>
+              </>
+            )}
             {source && (
               <button
                 type="button"
                 onClick={() => void process(source)}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+                className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-700 transition"
               >
                 Retry
               </button>
@@ -210,7 +232,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={reset}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
             >
               Start over
             </button>

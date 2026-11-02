@@ -6,8 +6,20 @@ export function mapAiError(err: unknown, isByok = false): Response {
   const lower = msg.toLowerCase();
 
   if (lower.includes("rate limit") || lower.includes("429") || lower.includes("quota")) {
+    if (isByok) {
+      return Response.json(
+        {
+          error:
+            "Your Gemini API key is rate limited or quota exceeded. Please add another key in Key Settings or wait a moment.",
+        },
+        { status: 429 },
+      );
+    }
     return Response.json(
-      { error: "The AI service is rate limited right now. Wait a moment and try again." },
+      {
+        error:
+          "Shaurya's API limit has reached (rate limited). Please add your Gemini API key in Key Settings (Get a free key at https://aistudio.google.com/apikey).",
+      },
       { status: 429 },
     );
   }

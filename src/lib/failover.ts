@@ -7,7 +7,7 @@
 export function parseKeys(header: string | null | undefined): string[] {
   if (!header) return [];
   return header
-    .split(",")
+    .split(/[,;\n]+/)
     .map((k) => k.trim())
     .filter(Boolean);
 }
@@ -18,12 +18,22 @@ export async function withKeyFailover<T>(
 ): Promise<T> {
   if (keys.length === 0) return run();
   let lastErr: unknown;
+  let rateLimitErr: unknown;
   for (const key of keys) {
     try {
       return await run(key);
     } catch (err) {
       lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes("rate limit") ||
+        lower.includes("429") ||
+        lower.includes("quota")
+      ) {
+        rateLimitErr = err;
+      }
     }
   }
-  throw lastErr;
+  throw rateLimitErr ?? lastErr;
 }

@@ -3,7 +3,7 @@ import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
 import { transcribe, generateObject, generateText } from "ai";
 import { analysisSchema, type Analysis } from "./schema";
 import { ANALYSIS_SYSTEM_PROMPT, buildAnalysisPrompt } from "./prompts";
-import { withKeyFailover } from "./failover";
+import { parseKeys, withKeyFailover } from "./failover";
 
 // The only module in the app that talks to a third-party AI provider.
 // Everything else (routes, UI) goes through these functions, keeping
@@ -68,8 +68,10 @@ Output ONLY the transcript without preamble or conversational filler.`,
     return { text: cleaned, durationSec: null };
   };
 
-  const keys = googleKeys ?? [];
-  if (keys.length > 0) return withKeyFailover(keys, run);
+  const clientKeys = (googleKeys ?? []).filter(Boolean);
+  if (clientKeys.length > 0) return withKeyFailover(clientKeys, run);
+  const serverKeys = parseKeys(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+  if (serverKeys.length > 0) return withKeyFailover(serverKeys, run);
   return run();
 }
 
@@ -99,22 +101,19 @@ export async function transcribeAudio(
   },
 ): Promise<TranscriptionResult> {
   const validGroqKeys = (opts?.keys ?? []).filter(isRecognizedGroqKey);
-  const envGroqKey = isRecognizedGroqKey(process.env.GROQ_API_KEY)
-    ? process.env.GROQ_API_KEY
-    : undefined;
-  const hasGroqKey = validGroqKeys.length > 0 || !!envGroqKey;
+  const serverGroqKeys = parseKeys(process.env.GROQ_API_KEY).filter(isRecognizedGroqKey);
+  const hasGroqKey = validGroqKeys.length > 0 || serverGroqKeys.length > 0;
+  const serverGoogleKeys = parseKeys(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
   const hasGoogleKey =
     (opts?.googleKeys && opts.googleKeys.length > 0) ||
-    !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    serverGoogleKeys.length > 0;
 
   if (hasGroqKey) {
     try {
       const keysToUse =
         validGroqKeys.length > 0
           ? validGroqKeys
-          : envGroqKey
-            ? [envGroqKey]
-            : [];
+          : serverGroqKeys;
 
       // Adaptive timeout: base 30s + 30ms per KB, bounded between 30s and 55s (under 60s route ceiling)
       const timeoutMs = Math.min(
@@ -197,8 +196,13 @@ export async function analyzeTranscript(
     return object;
   };
 
-  const keys = opts?.keys ?? [];
-  if (keys.length > 0) return withKeyFailover(keys, run);
+  const clientKeys = (opts?.keys ?? []).filter(Boolean);
+  if (clientKeys.length > 0) return withKeyFailover(clientKeys, run);
+
+  const serverKeys = parseKeys(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+  if (serverKeys.length > 0) {
+    return withKeyFailover(serverKeys, run);
+  }
 
   try {
     return await run();
